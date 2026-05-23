@@ -1,71 +1,53 @@
 import React, { useState } from 'react'
+import { AdminDashboard } from './AdminDashboard'
 
 function App() {
   const [username, setUsername] = useState('')
-  const [token, setToken] = useState('')
+  const [session, setSession] = useState<any>(null)
   const [command, setCommand] = useState('')
   const [response, setResponse] = useState('')
 
   const handleLogin = async () => {
     try {
       // @ts-ignore
-      const session = await window.api.login(username)
-      if (session) {
-        setToken(session.token)
-        setResponse(`Logged in as ${username}`)
+      const sess = await window.api.login(username)
+      if (sess) {
+        setSession(sess)
+        setResponse(`Logged in. Role: ${sess.role}`)
       } else {
-        setResponse('User not found. (Please seed database)')
+        setResponse('Invalid user')
       }
-    } catch (error: any) {
-      setResponse(`Error: ${error.message}`)
-    }
+    } catch (e: any) { setResponse(e.message) }
   }
 
   const handleSendCommand = async () => {
-    try {
-      // @ts-ignore
-      const res = await window.api.sendCommand(token, command)
-      setResponse(res)
-    } catch (error: any) {
-      setResponse(`Error: ${error.message}`)
-    }
+    // @ts-ignore
+    const res = await window.api.sendCommand(session.token, command)
+    setResponse(res)
+  }
+
+  if (!session) {
+    return (
+      <div className="container">
+        <h1>TTS Copilot Login</h1>
+        <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
+        <button onClick={handleLogin}>Login</button>
+        {response && <p>{response}</p>}
+      </div>
+    )
+  }
+
+  if (session.role === 'SUPER_ADMIN') {
+    return <AdminDashboard />
   }
 
   return (
     <div className="container">
-      <h1>TTS Copilot</h1>
-      
-      {!token ? (
-        <div className="login-box">
-          <input 
-            type="text" 
-            placeholder="Username" 
-            value={username} 
-            onChange={(e) => setUsername(e.target.value)} 
-          />
-          <button onClick={handleLogin}>Login</button>
-        </div>
-      ) : (
-        <div className="command-box">
-          <p>Token: {token.substring(0, 5)}...</p>
-          <input 
-            type="text" 
-            placeholder="Enter command..." 
-            value={command} 
-            onChange={(e) => setCommand(e.target.value)} 
-          />
-          <button onClick={handleSendCommand}>Send</button>
-        </div>
-      )}
-
-      {response && (
-        <div className="response-box">
-          <h3>Response:</h3>
-          <p>{response}</p>
-        </div>
-      )}
+      <h1>User Dashboard</h1>
+      <input value={command} onChange={e => setCommand(e.target.value)} placeholder="Command..." />
+      <button onClick={handleSendCommand}>Send</button>
+      {response && <div className="response-box">{response}</div>}
     </div>
   )
 }
-
 export default App

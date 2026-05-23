@@ -3,7 +3,7 @@ import { User, Session } from '../types'
 
 export const AuthManager = {
   // Placeholder for OAuth login
-  async login(username: string): Promise<Session | null> {
+  async login(username: string): Promise<any | null> {
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any
     if (!user) return null
 
@@ -16,6 +16,7 @@ export const AuthManager = {
     return {
       userId: user.id,
       token,
+      role: user.role,
       expiresAt
     }
   },
