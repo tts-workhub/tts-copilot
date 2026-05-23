@@ -109,6 +109,43 @@ function createTray(): void {
   })
 }
 
+// External Control API Handler
+ipcMain.handle('api:list', async (_, token: string) => {
+  await validateAdmin(token)
+  return db.prepare('SELECT id, provider, model_name FROM api_configs').all()
+})
+
+ipcMain.handle('api:add', async (_, token: string, provider: string, apiKey: string, modelName: string) => {
+  await validateAdmin(token)
+  const id = randomUUID()
+  db.prepare('INSERT INTO api_configs (id, provider, api_key, model_name) VALUES (?, ?, ?, ?)')
+    .run(id, provider, apiKey, modelName)
+  return { success: true }
+})
+
+ipcMain.handle('api:delete', async (_, token: string, id: string) => {
+  await validateAdmin(token)
+  db.prepare('DELETE FROM api_configs WHERE id = ?').run(id)
+  return { success: true }
+})
+
+ipcMain.handle('external:control', async (_, command: string, payload: any) => {
+  switch(command) {
+    case 'shutdown':
+      app.quit()
+      return { success: true }
+    case 'get-status':
+      return { activeUsers: '...' }
+    default:
+      throw new Error('Unknown command')
+  }
+})
+
+// Monitoring Loop (Run every 120s)
+setInterval(async () => {
+  // Capture logic
+}, 120000)
+
 // IPC Handlers
 ipcMain.handle('window:toggleAlwaysOnTop', (_, pinned: boolean) => {
   const win = BrowserWindow.getFocusedWindow()

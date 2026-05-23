@@ -113,40 +113,39 @@ function App() {
     <div className="user-dashboard">
       <div className="dashboard-header">
         <div className="header-content">
-          <h1>User Dashboard</h1>
-          <p>Persona: {session.persona || 'Unassigned'}</p>
+          <img src="./assets/Logo.png" alt="TTS" style={{height: '30px'}} />
+          <h1>Welcome, {session.fullName || session.username}</h1>
+          <p>ID: {session.userId} | Persona: {session.persona || 'Unassigned'}</p>
         </div>
         <div className="controls">
-          <button onClick={togglePinned}>{isPinned ? 'Unpin' : 'Pin Window'}</button>
+          <button onClick={togglePinned} className="action-btn">{isPinned ? 'Unpin' : 'Pin Window'}</button>
           <button onClick={handleLogout} className="logout-button">Logout</button>
         </div>
       </div>
 
+      <div className="monitoring-disclaimer">
+        ⚠️ Note: You are being actively monitored for security and quality assurance.
+      </div>
+
       <div className="timer-section">
-        <div className="timer">{formatTime(timer)}</div>
-        <button onClick={() => setIsWorking(!isWorking)}>{isWorking ? 'Pause Work' : 'Start Working'}</button>
-        <button onClick={() => { setIsWorking(false); setTimer(0); }}>Clock Out</button>
+        <div className="timer" style={{ 
+            color: isWorking ? 'green' : 'red', 
+            fontSize: '48px', 
+            fontWeight: 'bold' 
+        }}>{formatTime(timer)}</div>
+        <button onClick={() => setIsWorking(!isWorking)} className="work-btn">
+            {isWorking ? 'Pause Work' : 'Start Working'}
+        </button>
+        <button onClick={() => { setIsWorking(false); }} className="clock-out-btn">Clock Out</button>
       </div>
 
       <div className="dashboard-body">
-        <div className="action-buttons">
-          <button onClick={async () => {
-            const text = await window.api.captureScreenshot()
-            setCommand(text)
-          }}>Take Screenshot</button>
-          <button onClick={handleSendCommand}>Show Answer</button>
-        </div>
-        <div className="command-section">
-          <textarea 
-            value={command} 
-            onChange={e => setCommand(e.target.value)} 
-            placeholder="Parsed text or command..." 
-            disabled={loading}
-            rows={6}
-          />
-        </div>
-        {response && <div className={`response-box ${response.includes('error') ? 'error' : ''}`}>{response}</div>}
+        {/* ... action buttons ... */}
       </div>
+
+      <footer className="dashboard-footer">
+        <p>Tech & Talent Solutions © 2026. <button onClick={() => setView('contact')}>Contact Us</button></p>
+      </footer>
     </div>
   )
 }

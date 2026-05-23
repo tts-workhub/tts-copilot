@@ -33,6 +33,22 @@ db.exec(`
     expires_at DATETIME NOT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS monitoring_screenshots (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    image_data TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS api_configs (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    api_key TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `)
 
 export default db
