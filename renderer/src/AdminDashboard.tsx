@@ -26,6 +26,18 @@ export const AdminDashboard = () => {
     fetchPersonas();
   };
 
+  const handleEdit = (persona: Persona) => {
+    // @ts-ignore
+    window.api.updatePersona(persona);
+    fetchPersonas();
+  };
+
+  const handleDelete = (id: string) => {
+    // @ts-ignore
+    window.api.deletePersona(id);
+    fetchPersonas();
+  };
+
   return (
     <div className="admin-container">
       <h2>Super Admin Dashboard</h2>
@@ -33,14 +45,18 @@ export const AdminDashboard = () => {
       <div className="create-persona">
         <h3>Create New Persona</h3>
         <input placeholder="Name" onChange={e => setNewPersona({...newPersona, name: e.target.value})} />
-        <textarea placeholder="Content (10k-20k chars)" onChange={e => setNewPersona({...newPersona, content: e.target.value})} />
+        <textarea placeholder="Content" onChange={e => setNewPersona({...newPersona, content: e.target.value})} />
         <button onClick={handleCreate}>Save Persona</button>
       </div>
 
       <div className="persona-list">
         <h3>Existing Personas</h3>
         {personas.map(p => (
-          <div key={p.id}>{p.name}</div>
+          <div key={p.id} className="persona-item">
+            <span>{p.name}</span>
+            <button onClick={() => handleEdit(p)}>Edit</button>
+            <button onClick={() => handleDelete(p.id)}>Delete</button>
+          </div>
         ))}
       </div>
     </div>

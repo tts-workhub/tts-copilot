@@ -3,6 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { AuthManager } from '../src/auth'
 import { CommandHandler } from '../src/commands'
+import { PersonaManager } from '../src/personas'
+import db from '../src/database'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -51,6 +53,15 @@ ipcMain.handle('persona:create', async (_, persona: any) => {
   return { success: true }
 })
 
+ipcMain.handle('persona:update', async (_, persona: any) => {
+  PersonaManager.updatePersona(persona)
+  return { success: true }
+})
+
+ipcMain.handle('persona:delete', async (_, id: string) => {
+  db.prepare('DELETE FROM personas WHERE id = ?').run(id)
+  return { success: true }
+})
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.tts-copilot')

@@ -6,7 +6,9 @@ const api = {
   login: (username: string) => ipcRenderer.invoke('auth:login', username),
   sendCommand: (token: string, command: string) => ipcRenderer.invoke('command:send', token, command),
   getPersonas: () => ipcRenderer.invoke('persona:list'),
-  createPersona: (persona: any) => ipcRenderer.invoke('persona:create', persona)
+  createPersona: (persona: any) => ipcRenderer.invoke('persona:create', persona),
+  updatePersona: (persona: any) => ipcRenderer.invoke('persona:update', persona),
+  deletePersona: (id: string) => ipcRenderer.invoke('persona:delete', id)
 }
 
 if (process.contextIsolated) {
