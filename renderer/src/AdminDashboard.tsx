@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminDashboard.css';
+import { APIConfigDashboard } from './APIConfigDashboard';
 
 interface Persona {
   id: string;
@@ -12,12 +13,13 @@ interface Persona {
 interface User {
   id: string;
   username: string;
+  employee_name?: string;
   role: string;
   assigned_persona_id: string | null;
 }
 
 export const AdminDashboard = ({ session }: { session: any }) => {
-  const [activeTab, setActiveTab] = useState<'personas' | 'users'>('personas');
+  const [activeTab, setActiveTab] = useState<'personas' | 'users' | 'api_config'>('personas');
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export const AdminDashboard = ({ session }: { session: any }) => {
   // User form state
   const [newUser, setNewUser] = useState({
     username: '',
+    employeeName: '',
     role: 'REGULAR_USER',
     personaId: ''
   });
@@ -129,8 +132,8 @@ export const AdminDashboard = ({ session }: { session: any }) => {
 
     try {
       setLoading(true);
-      await window.api.createUser(session.token, newUser.username, newUser.role, newUser.personaId);
-      setNewUser({ username: '', role: 'REGULAR_USER', personaId: '' });
+      await window.api.createUser(session.token, newUser.username, newUser.employeeName, newUser.role, newUser.personaId);
+      setNewUser({ username: '', employeeName: '', role: 'REGULAR_USER', personaId: '' });
       showMessage('User created successfully', 'success');
       fetchUsers();
     } catch (error: any) {
@@ -206,6 +209,12 @@ export const AdminDashboard = ({ session }: { session: any }) => {
           onClick={() => setActiveTab('users')}
         >
           👥 Users
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'api_config' ? 'active' : ''}`}
+          onClick={() => setActiveTab('api_config')}
+        >
+          🔧 API Configuration
         </button>
       </div>
 
@@ -326,6 +335,15 @@ export const AdminDashboard = ({ session }: { session: any }) => {
               />
             </div>
             <div className="form-group">
+              <label>Employee Name</label>
+              <input
+                type="text"
+                placeholder="Enter employee name"
+                value={newUser.employeeName}
+                onChange={(e) => setNewUser({ ...newUser, employeeName: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
               <label>Role</label>
               <select
                 value={newUser.role}
@@ -365,6 +383,7 @@ export const AdminDashboard = ({ session }: { session: any }) => {
                   <thead>
                     <tr>
                       <th>Username</th>
+                      <th>Employee Name</th>
                       <th>Role</th>
                       <th>Assigned Persona</th>
                       <th>Actions</th>
@@ -374,6 +393,7 @@ export const AdminDashboard = ({ session }: { session: any }) => {
                     {users.map((user) => (
                       <tr key={user.id}>
                         <td>{user.username}</td>
+                        <td>{user.employee_name || '-'}</td>
                         <td>
                           <span className={`role-badge role-${user.role.toLowerCase()}`}>
                             {user.role}
@@ -409,6 +429,11 @@ export const AdminDashboard = ({ session }: { session: any }) => {
             )}
           </div>
         </div>
+      )}
+
+      {/* API Configuration Tab */}
+      {activeTab === 'api_config' && (
+        <APIConfigDashboard session={session} />
       )}
     </div>
   );

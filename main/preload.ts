@@ -11,9 +11,20 @@ const api = {
   deletePersona: (token: string, id: string) => ipcRenderer.invoke('persona:delete', token, id),
   uploadPersonaPdf: (token: string, filePath: string) => ipcRenderer.invoke('persona:upload-pdf', token, filePath),
   getUsers: (token: string) => ipcRenderer.invoke('user:list', token),
-  createUser: (token: string, username: string, role: string, personaId: string) => ipcRenderer.invoke('user:create', token, username, role, personaId),
+  createUser: (token: string, username: string, employeeName: string, role: string, personaId: string) => ipcRenderer.invoke('user:create', token, username, employeeName, role, personaId),
   updateUser: (token: string, userId: string, personaId: string) => ipcRenderer.invoke('user:update', token, userId, personaId),
-  deleteUser: (token: string, userId: string) => ipcRenderer.invoke('user:delete', token, userId)
+  deleteUser: (token: string, userId: string) => ipcRenderer.invoke('user:delete', token, userId),
+  // Chat and LLM
+  takeScreenshot: (token: string) => ipcRenderer.invoke('chat:screenshot', token),
+  sendToLLM: (token: string, text: string) => ipcRenderer.invoke('chat:send-llm', token, text),
+  getChatHistory: (token: string) => ipcRenderer.invoke('chat:history', token),
+  // API Config
+  getApiConfigs: (token: string) => ipcRenderer.invoke('api:list-configs', token),
+  createApiConfig: (token: string, config: any) => ipcRenderer.invoke('api:create-config', token, config),
+  updateApiConfig: (token: string, configId: string, config: any) => ipcRenderer.invoke('api:update-config', token, configId, config),
+  deleteApiConfig: (token: string, configId: string) => ipcRenderer.invoke('api:delete-config', token, configId),
+  testApiConfig: (token: string, configId: string) => ipcRenderer.invoke('api:test-config', token, configId),
+  toggleAlwaysOnTop: (onTop: boolean) => ipcRenderer.invoke('window:always-on-top', onTop)
 }
 
 if (process.contextIsolated) {

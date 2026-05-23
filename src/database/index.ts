@@ -10,6 +10,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
+    employee_name TEXT,
     role TEXT NOT NULL,
     assigned_persona_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -42,11 +43,23 @@ db.exec(`
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    message_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    extracted_text TEXT,
+    llm_response TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS api_configs (
     id TEXT PRIMARY KEY,
     provider TEXT NOT NULL,
     api_key TEXT NOT NULL,
     model_name TEXT NOT NULL,
+    endpoint TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `)
