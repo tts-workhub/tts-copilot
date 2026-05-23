@@ -39,26 +39,31 @@ function createWindow(): void {
 
 // IPC Handlers
 ipcMain.handle('auth:login', async (_, username: string) => {
+  if (typeof username !== 'string') throw new Error('Invalid input')
   return await AuthManager.login(username)
 })
 
-ipcMain.handle('persona:list', async () => {
+ipcMain.handle('persona:list', async (event) => {
+  // Validate sender session if necessary
   const stmt = db.prepare('SELECT * FROM personas')
   return stmt.all()
 })
 
 ipcMain.handle('persona:create', async (_, persona: any) => {
+  if (!persona.name || typeof persona.name !== 'string') throw new Error('Invalid persona data')
   const id = Math.random().toString(36).substring(7)
   PersonaManager.createPersona({ id, ...persona, knowledgeBoundaries: [], restrictions: [] })
   return { success: true }
 })
 
 ipcMain.handle('persona:update', async (_, persona: any) => {
+  if (!persona.id) throw new Error('Missing persona ID')
   PersonaManager.updatePersona(persona)
   return { success: true }
 })
 
 ipcMain.handle('persona:delete', async (_, id: string) => {
+  if (typeof id !== 'string') throw new Error('Invalid ID')
   db.prepare('DELETE FROM personas WHERE id = ?').run(id)
   return { success: true }
 })
