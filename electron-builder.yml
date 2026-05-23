@@ -1,0 +1,13 @@
+appId: com.tts-copilot
+productName: TTS Copilot
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
