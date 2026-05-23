@@ -40,11 +40,17 @@ ipcMain.handle('auth:login', async (_, username: string) => {
   return await AuthManager.login(username)
 })
 
-ipcMain.handle('command:send', async (event, token: string, command: string) => {
-  const user = await AuthManager.validateSession(token)
-  if (!user) throw new Error('Unauthorized')
-  return await CommandHandler.handleCommand(user, command)
+ipcMain.handle('persona:list', async () => {
+  const stmt = db.prepare('SELECT * FROM personas')
+  return stmt.all()
 })
+
+ipcMain.handle('persona:create', async (_, persona: any) => {
+  const id = Math.random().toString(36).substring(7)
+  PersonaManager.createPersona({ id, ...persona, knowledgeBoundaries: [], restrictions: [] })
+  return { success: true }
+})
+
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.tts-copilot')

@@ -4,7 +4,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   login: (username: string) => ipcRenderer.invoke('auth:login', username),
-  sendCommand: (token: string, command: string) => ipcRenderer.invoke('command:send', token, command)
+  sendCommand: (token: string, command: string) => ipcRenderer.invoke('command:send', token, command),
+  getPersonas: () => ipcRenderer.invoke('persona:list'),
+  createPersona: (persona: any) => ipcRenderer.invoke('persona:create', persona)
 }
 
 if (process.contextIsolated) {
