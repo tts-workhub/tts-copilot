@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite'
+import Database from 'better-sqlite3'
 import { join } from 'path'
 import os from 'os'
 import fs from 'fs'
@@ -12,7 +12,7 @@ if (!fs.existsSync(userDataPath)) {
   fs.mkdirSync(userDataPath, { recursive: true })
 }
 
-const db = new DatabaseSync(dbPath)
+const db = new Database(dbPath)
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (

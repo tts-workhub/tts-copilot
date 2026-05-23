@@ -1,9 +1,9 @@
-import { DatabaseSync } from 'node:sqlite'
+import Database from 'better-sqlite3'
 import { join } from 'path'
 import { app } from 'electron'
 
 const dbPath = join(app.getPath('userData'), 'database.sqlite')
-const db = new DatabaseSync(dbPath)
+const db = new Database(dbPath)
 
 // Initialize schema
 db.exec(`
