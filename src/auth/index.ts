@@ -13,11 +13,18 @@ export const AuthManager = {
     db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
       .run(user.id, token, expiresAt.toISOString())
 
+    const persona = user.assigned_persona_id
+      ? db.prepare('SELECT name FROM personas WHERE id = ?').get(user.assigned_persona_id) as any
+      : null
+
     return {
       userId: user.id,
-      token,
+      username: user.username,
+      employeeName: user.employee_name,
       role: user.role,
-      expiresAt
+      token,
+      expiresAt: expiresAt.toISOString(),
+      persona: persona ? persona.name : 'Unassigned'
     }
   },
 

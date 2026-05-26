@@ -284,19 +284,19 @@ ipcMain.handle('user:delete', async (_, token: string, userId: string) => {
 ipcMain.handle('chat:screenshot', async (_, token: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  return await ChatService.captureAndExtractText(user.userId)
+  return await ChatService.captureAndExtractText(user.id)
 })
 
-ipcMain.handle('chat:send-llm', async (_, token: string, extractedText: string) => {
+ipcMain.handle('chat:send-llm', async (_, token: string, userQuestion: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  return await ChatService.sendToLLM(user.userId, extractedText)
+  return await ChatService.sendToLLM(user.id, userQuestion)
 })
 
 ipcMain.handle('chat:history', async (_, token: string, limit?: number) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  return ChatService.getChatHistory(user.userId, limit || 50)
+  return ChatService.getChatHistory(user.id, limit)
 })
 
 // API Configuration Handlers
@@ -361,18 +361,7 @@ ipcMain.handle('api:test-config', async (_, token: string, configId: string) => 
   }
   
   try {
-    // Test connection with a simple request
-    if (config.provider === 'openai') {
-      // OpenAI test
-      const testPrompt = 'Say hello'
-      // This would call the API but we're just testing the connection
-      return { success: true, message: 'OpenAI API connection successful' }
-    } else if (config.provider === 'anthropic') {
-      return { success: true, message: 'Anthropic API connection successful' }
-    } else if (config.provider === 'google') {
-      return { success: true, message: 'Google API connection successful' }
-    }
-    
+    await ChatService.testConnection(config)
     return { success: true, message: 'API connection successful' }
   } catch (error) {
     throw new Error(`API test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)

@@ -5,19 +5,26 @@ import * as path from 'path';
 import axios from 'axios';
 import db from '../database';
 import { randomUUID } from 'crypto';
+import { app } from 'electron';
 
 export class ChatService {
   static async captureAndExtractText(userId: string): Promise<{ screenshot: string; extractedText: string }> {
     try {
-      // Capture screenshot
-      const screenshotPath = await screenshot();
+      // Capture screenshot as buffer
+      const imgBuf = await screenshot({ format: 'png' });
+      const base64Screenshot = imgBuf.toString('base64');
       
-      // Read screenshot file
-      const screenshotData = fs.readFileSync(screenshotPath);
-      const base64Screenshot = screenshotData.toString('base64');
+      // Save screenshot in userData/screenshots folder for archival/monitoring
+      const screenshotsDir = path.join(app.getPath('userData'), 'screenshots');
+      if (!fs.existsSync(screenshotsDir)) {
+        fs.mkdirSync(screenshotsDir, { recursive: true });
+      }
+      const filename = `${Date.now()}_${userId}.png`;
+      const fullPath = path.join(screenshotsDir, filename);
+      fs.writeFileSync(fullPath, imgBuf);
       
       // Extract text using Tesseract
-      const result = await Tesseract.recognize(screenshotData, 'eng');
+      const result = await Tesseract.recognize(imgBuf, 'eng');
       const extractedText = result.data.text;
       
       // Save to database
@@ -32,13 +39,6 @@ export class ChatService {
         `Screenshot captured at ${new Date().toISOString()}`,
         extractedText
       );
-      
-      // Clean up temp screenshot file
-      try {
-        fs.unlinkSync(screenshotPath);
-      } catch (e) {
-        console.error('Failed to clean up screenshot file:', e);
-      }
       
       return {
         screenshot: `data:image/png;base64,${base64Screenshot}`,
@@ -153,6 +153,7 @@ Please analyze the following text and provide a structured response based on you
       {
         headers: {
           'x-api-key': apiConfig.api_key,
+          'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json'
         }
       }
@@ -194,5 +195,61 @@ Please analyze the following text and provide a structured response based on you
     `).all(userId, limit);
     
     return (messages as any[]).reverse();
+  }
+
+  static async testConnection(apiConfig: any): Promise<boolean> {
+    try {
+      if (apiConfig.provider === 'openai') {
+        await axios.post(
+          apiConfig.endpoint || 'https://api.openai.com/v1/chat/completions',
+          {
+            model: apiConfig.model_name || 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: 'respond with ok' }],
+            max_tokens: 5
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${apiConfig.api_key}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 5000
+          }
+        );
+      } else if (apiConfig.provider === 'anthropic') {
+        await axios.post(
+          apiConfig.endpoint || 'https://api.anthropic.com/v1/messages',
+          {
+            model: apiConfig.model_name || 'claude-3-haiku-20240307',
+            max_tokens: 5,
+            messages: [{ role: 'user', content: 'respond with ok' }]
+          },
+          {
+            headers: {
+              'x-api-key': apiConfig.api_key,
+              'anthropic-version': '2023-06-01',
+              'Content-Type': 'application/json'
+            },
+            timeout: 5000
+          }
+        );
+      } else if (apiConfig.provider === 'google') {
+        await axios.post(
+          apiConfig.endpoint || `https://generativelanguage.googleapis.com/v1beta/models/${apiConfig.model_name || 'gemini-1.5-flash'}:generateContent?key=${apiConfig.api_key}`,
+          {
+            contents: [{ parts: [{ text: 'respond with ok' }] }]
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 5000
+          }
+        );
+      } else {
+        throw new Error(`Unknown provider: ${apiConfig.provider}`);
+      }
+      return true;
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error?.message || error.message;
+      throw new Error(errorMsg);
+    }
   }
 }

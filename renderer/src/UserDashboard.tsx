@@ -33,6 +33,52 @@ export const UserDashboard = ({ session, onLogout }: { session: any; onLogout: (
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const history = await window.api.getChatHistory(session.token);
+        if (history && Array.isArray(history)) {
+          const formattedMessages: ChatMessage[] = [];
+          for (const msg of history) {
+            if (msg.message_type === 'screenshot') {
+              formattedMessages.push({
+                id: msg.id + '_screenshot',
+                type: 'screenshot',
+                content: 'Screenshot taken and text extracted',
+                extractedText: msg.extracted_text,
+                timestamp: new Date(msg.created_at)
+              });
+            } else if (msg.message_type === 'llm_response') {
+              formattedMessages.push({
+                id: msg.id + '_user',
+                type: 'user',
+                content: msg.extracted_text || '',
+                timestamp: new Date(msg.created_at)
+              });
+              formattedMessages.push({
+                id: msg.id + '_llm',
+                type: 'llm_response',
+                content: msg.llm_response || msg.content,
+                timestamp: new Date(msg.created_at)
+              });
+            } else {
+              formattedMessages.push({
+                id: msg.id,
+                type: msg.message_type as any,
+                content: msg.content,
+                timestamp: new Date(msg.created_at)
+              });
+            }
+          }
+          setChatMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      }
+    };
+    loadChatHistory();
+  }, [session.token]);
+
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;

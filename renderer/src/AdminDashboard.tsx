@@ -18,7 +18,7 @@ interface User {
   assigned_persona_id: string | null;
 }
 
-export const AdminDashboard = ({ session }: { session: any }) => {
+export const AdminDashboard = ({ session, onLogout }: { session: any; onLogout: () => void }) => {
   const [activeTab, setActiveTab] = useState<'personas' | 'users' | 'api_config'>('personas');
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -186,6 +186,9 @@ export const AdminDashboard = ({ session }: { session: any }) => {
             <h1>Tech & Talent Solutions</h1>
             <p className="tagline">Empowering Remote Intelligence</p>
           </div>
+        </div>
+        <div className="header-actions">
+          <button onClick={onLogout} className="btn btn-logout">Logout</button>
         </div>
       </div>
 

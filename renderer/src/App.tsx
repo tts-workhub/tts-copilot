@@ -64,12 +64,7 @@ function App() {
   }
 
   if (session.role === 'SUPER_ADMIN') {
-    return (
-        <div className="admin-container">
-            <button onClick={handleLogout}>Logout</button>
-            <AdminDashboard session={session} />
-        </div>
-    )
+    return <AdminDashboard session={session} onLogout={handleLogout} />
   }
 
   return <UserDashboard session={session} onLogout={handleLogout} />

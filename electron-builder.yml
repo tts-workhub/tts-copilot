@@ -1,5 +1,6 @@
 appId: com.tts-copilot
 productName: TTS Copilot
+npmRebuild: false
 directories:
   output: dist
   buildResources: build
