@@ -1,5 +1,6 @@
 import db from '../database'
 import { Persona } from '../types'
+import { SecurityUtils } from '../utils/security'
 
 export const PersonaManager = {
   getPersona(id: string): Persona | null {
@@ -10,11 +11,11 @@ export const PersonaManager = {
       id: row.id,
       name: row.name,
       tone: row.tone,
-      personality: row.personality,
-      knowledgeBoundaries: JSON.parse(row.knowledge_boundaries || '[]'),
+      personality: SecurityUtils.decrypt(row.personality),
+      knowledgeBoundaries: JSON.parse(SecurityUtils.decrypt(row.knowledge_boundaries || SecurityUtils.encrypt('[]'))),
       responseStyle: row.response_style,
-      restrictions: JSON.parse(row.restrictions || '[]'),
-      content: row.content
+      restrictions: JSON.parse(SecurityUtils.decrypt(row.restrictions || SecurityUtils.encrypt('[]'))),
+      content: SecurityUtils.decrypt(row.content)
     }
   },
 
@@ -27,11 +28,11 @@ export const PersonaManager = {
       persona.id,
       persona.name,
       persona.tone,
-      persona.personality,
-      JSON.stringify(persona.knowledgeBoundaries),
+      SecurityUtils.encrypt(persona.personality || ''),
+      SecurityUtils.encrypt(JSON.stringify(persona.knowledgeBoundaries || [])),
       persona.responseStyle,
-      JSON.stringify(persona.restrictions),
-      persona.content
+      SecurityUtils.encrypt(JSON.stringify(persona.restrictions || [])),
+      SecurityUtils.encrypt(persona.content || '')
     )
   },
 
@@ -44,11 +45,11 @@ export const PersonaManager = {
     stmt.run(
       persona.name,
       persona.tone,
-      persona.personality,
-      JSON.stringify(persona.knowledgeBoundaries),
+      SecurityUtils.encrypt(persona.personality || ''),
+      SecurityUtils.encrypt(JSON.stringify(persona.knowledgeBoundaries || [])),
       persona.responseStyle,
-      JSON.stringify(persona.restrictions),
-      persona.content,
+      SecurityUtils.encrypt(JSON.stringify(persona.restrictions || [])),
+      SecurityUtils.encrypt(persona.content || ''),
       persona.id
     )
   }

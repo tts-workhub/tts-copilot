@@ -5,6 +5,9 @@ import { app } from 'electron'
 const dbPath = join(app.getPath('userData'), 'database.sqlite')
 const db = new Database(dbPath)
 
+// Optimization: Use WAL mode for higher concurrency (better for 100+ users)
+db.pragma('journal_mode = WAL');
+
 // Initialize schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -29,8 +32,9 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    token TEXT PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
     expires_at DATETIME NOT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id)
   );

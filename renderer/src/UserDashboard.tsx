@@ -116,6 +116,72 @@ export const UserDashboard = ({ session, onLogout }: { session: any; onLogout: (
     }
   };
 
+  const handleTakeStructuredScreenshot = async () => {
+    try {
+      setScreenshotLoading(true);
+      const response = await window.api.takeStructuredScreenshot(session.token);
+      
+      setCurrentScreenshot(response.screenshot);
+      setExtractedText(response.structuredData);
+
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'screenshot',
+        content: 'Structured Screenshot Captured',
+        timestamp: new Date()
+      });
+
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'llm_response',
+        content: response.structuredData,
+        timestamp: new Date()
+      });
+    } catch (error: any) {
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        content: `Error taking structured screenshot: ${error.message}`,
+        timestamp: new Date()
+      });
+    } finally {
+      setScreenshotLoading(false);
+    }
+  };
+
+  const handleShowAnswer = async () => {
+    if (!extractedText.trim()) {
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        content: 'No extracted text found. Please take a screenshot first.',
+        timestamp: new Date()
+      });
+      return;
+    }
+
+    try {
+      setLlmLoading(true);
+      const response = await window.api.getPersonaGuidance(session.token, extractedText);
+
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'llm_response',
+        content: response.response,
+        timestamp: new Date()
+      });
+    } catch (error: any) {
+      addChatMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        content: `Error generating answer: ${error.message}`,
+        timestamp: new Date()
+      });
+    } finally {
+      setLlmLoading(false);
+    }
+  };
+
   const handleSendToLLM = async () => {
     if (!extractedText.trim()) {
       addChatMessage({
@@ -209,7 +275,25 @@ export const UserDashboard = ({ session, onLogout }: { session: any; onLogout: (
         <div className="chat-container">
           {/* Chat History */}
           <div className="chat-box">
-            <h2>Chat & Analysis</h2>
+            <div className="chat-box-header">
+              <h2>Chat & Analysis</h2>
+              <div className="chat-header-actions">
+                <button 
+                  onClick={handleTakeStructuredScreenshot} 
+                  disabled={screenshotLoading}
+                  className="chat-header-btn"
+                >
+                  {screenshotLoading ? 'Capturing...' : '📸 take Screenshot'}
+                </button>
+                <button 
+                  onClick={handleShowAnswer} 
+                  disabled={llmLoading || !extractedText.trim()}
+                  className="chat-header-btn btn-show-answer"
+                >
+                  {llmLoading ? 'Analyzing...' : '💡 Show Answer'}
+                </button>
+              </div>
+            </div>
             <div className="messages">
               {chatMessages.length === 0 ? (
                 <div className="empty-chat">

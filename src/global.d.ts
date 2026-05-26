@@ -14,9 +14,16 @@ export interface IElectronAPI {
   updateUser: (token: string, userId: string, personaId: string) => Promise<{ success: boolean }>;
   deleteUser: (token: string, userId: string) => Promise<{ success: boolean }>;
   takeScreenshot: (token: string) => Promise<{ screenshot: string; extractedText: string }>;
+  takeStructuredScreenshot: (token: string) => Promise<{ screenshot: string; structuredData: string }>;
+  getPersonaGuidance: (token: string, structuredText: string) => Promise<{ response: string }>;
   sendToLLM: (token: string, text: string) => Promise<{ response: string }>;
   getChatHistory: (token: string) => Promise<any[]>;
   toggleAlwaysOnTop: (onTop: boolean) => Promise<{ success: boolean }>;
+  getApiConfigs: (token: string) => Promise<any[]>;
+  createApiConfig: (token: string, config: any) => Promise<{ success: boolean; configId: string }>;
+  updateApiConfig: (token: string, configId: string, config: any) => Promise<{ success: boolean }>;
+  deleteApiConfig: (token: string, configId: string) => Promise<{ success: boolean }>;
+  testApiConfig: (token: string, configId: string) => Promise<{ success: boolean; message: string }>;
 }
 
 declare global {

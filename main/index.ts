@@ -2,16 +2,14 @@ import { app, shell, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'ele
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { AuthManager } from '../src/auth'
-import { CommandHandler } from '../src/commands'
 import { PersonaManager } from '../src/personas'
 import { parsePdfToPersona, personaToJson } from '../src/utils/pdfParser'
 import { ChatService } from '../src/utils/chatService'
 import db from '../src/database'
 import { randomUUID } from 'crypto'
-import screenshot from 'screenshot-desktop'
-import * as Tesseract from 'tesseract.js'
 import * as fs from 'fs'
 import * as path from 'path'
+import { SecurityUtils } from '../src/utils/security'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -37,7 +35,6 @@ function createWindow(): void {
   })
 
   mainWindow.on('close', (event) => {
-    // Minimize to tray instead of closing
     if (!app.isQuitting) {
       event.preventDefault()
       mainWindow?.hide()
@@ -49,7 +46,6 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -100,69 +96,7 @@ function createTray(): void {
   ])
   
   tray.setContextMenu(contextMenu)
-  tray.on('double-click', () => {
-    if (mainWindow?.isVisible()) {
-      mainWindow.hide()
-    } else {
-      mainWindow?.show()
-      mainWindow?.focus()
-    }
-  })
 }
-
-// External Control API Handler
-ipcMain.handle('api:list', async (_, token: string) => {
-  await validateAdmin(token)
-  return db.prepare('SELECT id, provider, model_name FROM api_configs').all()
-})
-
-ipcMain.handle('api:add', async (_, token: string, provider: string, apiKey: string, modelName: string) => {
-  await validateAdmin(token)
-  const id = randomUUID()
-  db.prepare('INSERT INTO api_configs (id, provider, api_key, model_name) VALUES (?, ?, ?, ?)')
-    .run(id, provider, apiKey, modelName)
-  return { success: true }
-})
-
-ipcMain.handle('api:delete', async (_, token: string, id: string) => {
-  await validateAdmin(token)
-  db.prepare('DELETE FROM api_configs WHERE id = ?').run(id)
-  return { success: true }
-})
-
-ipcMain.handle('external:control', async (_, command: string, payload: any) => {
-  switch(command) {
-    case 'shutdown':
-      app.quit()
-      return { success: true }
-    case 'get-status':
-      return { activeUsers: '...' }
-    default:
-      throw new Error('Unknown command')
-  }
-})
-
-// Monitoring Loop (Run every 120s)
-setInterval(async () => {
-  // Capture logic
-}, 120000)
-
-// IPC Handlers
-ipcMain.handle('window:toggleAlwaysOnTop', (_, pinned: boolean) => {
-  const win = BrowserWindow.getFocusedWindow()
-  win?.setAlwaysOnTop(pinned)
-})
-
-ipcMain.handle('auth:logout', async (_, token: string) => {
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
-  return { success: true }
-})
-
-ipcMain.handle('capture:screenshot', async () => {
-  // Logic to take screenshot via desktop-screenshot
-  // and process with tesseract.js
-  return "Parsed text from screenshot" 
-})
 
 const validateAdmin = async (token: string) => {
   const user = await AuthManager.validateSession(token)
@@ -170,28 +104,34 @@ const validateAdmin = async (token: string) => {
   return user
 }
 
+// IPC Handlers
+ipcMain.handle('auth:login', async (_, username: string) => {
+  if (typeof username !== 'string' || !username.trim()) throw new Error('Invalid username')
+  return await AuthManager.login(username)
+})
+
+ipcMain.handle('auth:logout', async (_, token: string) => {
+  db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+  return { success: true }
+})
+
 ipcMain.handle('command:send', async (_, token: string, command: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  return await CommandHandler.handleCommand(user, command)
-})
-
-ipcMain.handle('auth:login', async (_, username: string) => {
-  if (typeof username !== 'string') throw new Error('Invalid input')
-  return await AuthManager.login(username)
+  const result = await ChatService.sendToLLM(user.id, command)
+  return result.response
 })
 
 ipcMain.handle('persona:list', async (_, token: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  const stmt = db.prepare('SELECT * FROM personas')
-  return stmt.all()
+  return db.prepare('SELECT * FROM personas').all()
 })
 
 ipcMain.handle('persona:create', async (_, token: string, persona: any) => {
   await validateAdmin(token)
-  if (!persona.name || typeof persona.name !== 'string') throw new Error('Invalid persona data')
-  const id = Math.random().toString(36).substring(7)
+  if (!persona.name) throw new Error('Invalid persona data')
+  const id = randomUUID()
   PersonaManager.createPersona({ id, ...persona, knowledgeBoundaries: [], restrictions: [] })
   return { success: true }
 })
@@ -205,92 +145,61 @@ ipcMain.handle('persona:update', async (_, token: string, persona: any) => {
 
 ipcMain.handle('persona:delete', async (_, token: string, id: string) => {
   await validateAdmin(token)
-  if (typeof id !== 'string') throw new Error('Invalid ID')
   db.prepare('DELETE FROM personas WHERE id = ?').run(id)
   return { success: true }
 })
 
-// PDF Upload Handler
 ipcMain.handle('persona:upload-pdf', async (_, token: string, filePath: string) => {
   await validateAdmin(token)
-  try {
-    const parsedData = await parsePdfToPersona(filePath)
-    const personaId = randomUUID()
-    
-    PersonaManager.createPersona({
-      id: personaId,
-      name: parsedData.name,
-      tone: parsedData.tone,
-      personality: parsedData.personality,
-      knowledgeBoundaries: parsedData.knowledgeBoundaries,
-      responseStyle: parsedData.responseStyle,
-      restrictions: parsedData.restrictions,
-      content: parsedData.content
-    })
-
-    // Store JSON version for fast crawling
-    const jsonData = personaToJson(parsedData)
-    
-    return { 
-      success: true, 
-      personaId,
-      persona: parsedData,
-      jsonData 
-    }
-  } catch (error) {
-    throw new Error(`PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  if (!fs.existsSync(filePath)) throw new Error('File not found')
+  const parsedData = await parsePdfToPersona(filePath)
+  const personaId = randomUUID()
+  PersonaManager.createPersona({ id: personaId, ...parsedData })
+  return { success: true, personaId, persona: parsedData }
 })
 
-// User Management Handlers
 ipcMain.handle('user:list', async (_, token: string) => {
   await validateAdmin(token)
-  const users = db.prepare('SELECT id, username, employee_name, role, assigned_persona_id FROM users').all()
-  return users
+  return db.prepare('SELECT id, username, employee_name, role, assigned_persona_id FROM users').all()
 })
 
 ipcMain.handle('user:create', async (_, token: string, username: string, employeeName: string, role: string, personaId: string) => {
   await validateAdmin(token)
-  if (!username || !role) throw new Error('Missing required fields')
-  
+  if (!username || !role) throw new Error('Missing fields')
   const userId = randomUUID()
-  try {
-    db.prepare('INSERT INTO users (id, username, employee_name, role, assigned_persona_id) VALUES (?, ?, ?, ?, ?)')
-      .run(userId, username, employeeName || null, role, personaId || null)
-    return { success: true, userId }
-  } catch (error) {
-    throw new Error(`User creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  db.prepare('INSERT INTO users (id, username, employee_name, role, assigned_persona_id) VALUES (?, ?, ?, ?, ?)')
+    .run(userId, username, employeeName, role, personaId || null)
+  return { success: true, userId }
 })
 
 ipcMain.handle('user:update', async (_, token: string, userId: string, personaId: string) => {
   await validateAdmin(token)
-  if (!userId) throw new Error('Missing user ID')
-  
-  db.prepare('UPDATE users SET assigned_persona_id = ? WHERE id = ?')
-    .run(personaId || null, userId)
+  db.prepare('UPDATE users SET assigned_persona_id = ? WHERE id = ?').run(personaId || null, userId)
   return { success: true }
 })
 
 ipcMain.handle('user:delete', async (_, token: string, userId: string) => {
   await validateAdmin(token)
-  if (!userId) throw new Error('Missing user ID')
-  
   db.prepare('DELETE FROM users WHERE id = ?').run(userId)
   return { success: true }
 })
 
-// Chat and Screenshot Handlers
 ipcMain.handle('chat:screenshot', async (_, token: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
   return await ChatService.captureAndExtractText(user.id)
 })
 
-ipcMain.handle('chat:send-llm', async (_, token: string, userQuestion: string) => {
+ipcMain.handle('chat:screenshot-structured', async (_, token: string) => {
   const user = await AuthManager.validateSession(token)
   if (!user) throw new Error('Unauthorized')
-  return await ChatService.sendToLLM(user.id, userQuestion)
+  return await ChatService.captureAndStructureSurvey(user.id)
+})
+
+ipcMain.handle('chat:get-persona-guidance', async (_, token: string, structuredText: string) => {
+  const user = await AuthManager.validateSession(token)
+  if (!user) throw new Error('Unauthorized')
+  return await ChatService.getPersonaGuidance(user.id, structuredText)
 })
 
 ipcMain.handle('chat:history', async (_, token: string, limit?: number) => {
@@ -299,75 +208,33 @@ ipcMain.handle('chat:history', async (_, token: string, limit?: number) => {
   return ChatService.getChatHistory(user.id, limit)
 })
 
-// API Configuration Handlers
 ipcMain.handle('api:list-configs', async (_, token: string) => {
   await validateAdmin(token)
-  const configs = db.prepare('SELECT id, provider, model_name, endpoint FROM api_configs').all()
-  return configs
+  return db.prepare('SELECT id, provider, model_name, endpoint FROM api_configs').all()
 })
 
 ipcMain.handle('api:create-config', async (_, token: string, config: any) => {
   await validateAdmin(token)
-  if (!config.provider || !config.apiKey || !config.modelName) {
-    throw new Error('Missing required fields: provider, apiKey, modelName')
-  }
-  
-  const configId = randomUUID()
-  try {
-    db.prepare(`
-      INSERT INTO api_configs (id, provider, api_key, model_name, endpoint)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(configId, config.provider, config.apiKey, config.modelName, config.endpoint || null)
-    
-    return { success: true, configId }
-  } catch (error) {
-    throw new Error(`API config creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  const id = randomUUID()
+  const encryptedKey = SecurityUtils.encrypt(config.apiKey)
+  db.prepare('INSERT INTO api_configs (id, provider, api_key, model_name, endpoint) VALUES (?, ?, ?, ?, ?)')
+    .run(id, config.provider, encryptedKey, config.modelName, config.endpoint || null)
+  return { success: true, configId: id }
 })
 
-ipcMain.handle('api:update-config', async (_, token: string, configId: string, config: any) => {
+ipcMain.handle('api:delete-config', async (_, token: string, id: string) => {
   await validateAdmin(token)
-  if (!configId) throw new Error('Missing config ID')
-  
-  try {
-    db.prepare(`
-      UPDATE api_configs
-      SET provider = ?, api_key = ?, model_name = ?, endpoint = ?
-      WHERE id = ?
-    `).run(config.provider, config.apiKey, config.modelName, config.endpoint || null, configId)
-    
-    return { success: true }
-  } catch (error) {
-    throw new Error(`API config update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
-})
-
-ipcMain.handle('api:delete-config', async (_, token: string, configId: string) => {
-  await validateAdmin(token)
-  if (!configId) throw new Error('Missing config ID')
-  
-  db.prepare('DELETE FROM api_configs WHERE id = ?').run(configId)
+  db.prepare('DELETE FROM api_configs WHERE id = ?').run(id)
   return { success: true }
 })
 
-ipcMain.handle('api:test-config', async (_, token: string, configId: string) => {
+ipcMain.handle('api:test-config', async (_, token: string, id: string) => {
   await validateAdmin(token)
-  if (!configId) throw new Error('Missing config ID')
-  
-  const config = db.prepare('SELECT * FROM api_configs WHERE id = ?').get(configId) as any
-  
-  if (!config) {
-    throw new Error('API config not found')
-  }
-  
-  try {
-    await ChatService.testConnection(config)
-    return { success: true, message: 'API connection successful' }
-  } catch (error) {
-    throw new Error(`API test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  const config = db.prepare('SELECT * FROM api_configs WHERE id = ?').get(id) as any
+  if (!config) throw new Error('Not found')
+  await ChatService.testConnection(config)
+  return { success: true, message: 'Connection successful' }
 })
-
 // Window Control Handler
 ipcMain.handle('window:always-on-top', async (_, onTop: boolean) => {
   if (mainWindow) {
@@ -377,30 +244,22 @@ ipcMain.handle('window:always-on-top', async (_, onTop: boolean) => {
   return { success: true }
 })
 
-// Auth Logout Handler
-ipcMain.handle('auth:logout', async (_, token: string) => {
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
-  return { success: true }
-})
-
+// Monitoring & Maintenance Loop (Run every 2 minutes)
+setInterval(() => {
+  // Storage Cleanup: Delete screenshots older than 7 days
+  ChatService.cleanupOldScreenshots(7);
+}, 120000);
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.tts-copilot')
 
+  electronApp.setAppUserModelId('com.tts-copilot')
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
   createWindow()
   createTray()
-
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform !== 'darwin') app.quit()
 })

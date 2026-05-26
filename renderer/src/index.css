@@ -306,6 +306,8 @@ body {
     padding: 1rem;
   }
 }
+
+button {
   border: none;
   background: #646cff;
   color: white;

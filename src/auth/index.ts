@@ -1,5 +1,6 @@
 import db from '../database'
 import { User, Session } from '../types'
+import { randomBytes, randomUUID } from 'crypto'
 
 export const AuthManager = {
   // Placeholder for OAuth login
@@ -7,11 +8,11 @@ export const AuthManager = {
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any
     if (!user) return null
 
-    const token = Math.random().toString(36).substring(7)
+    const token = randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)')
-      .run(user.id, token, expiresAt.toISOString())
+    db.prepare('INSERT INTO sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)')
+      .run(randomUUID(), user.id, token, expiresAt.toISOString())
 
     const persona = user.assigned_persona_id
       ? db.prepare('SELECT name FROM personas WHERE id = ?').get(user.assigned_persona_id) as any

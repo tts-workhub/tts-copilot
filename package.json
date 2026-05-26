@@ -12,8 +12,10 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@types/crypto-js": "^4.2.2",
     "axios": "^1.16.1",
     "better-sqlite3": "^12.10.0",
+    "crypto-js": "^4.2.0",
     "dotenv": "^17.4.2",
     "pdf-parse": "^2.4.5",
     "react": "^19.2.6",

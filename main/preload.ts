@@ -16,6 +16,8 @@ const api = {
   deleteUser: (token: string, userId: string) => ipcRenderer.invoke('user:delete', token, userId),
   // Chat and LLM
   takeScreenshot: (token: string) => ipcRenderer.invoke('chat:screenshot', token),
+  takeStructuredScreenshot: (token: string) => ipcRenderer.invoke('chat:screenshot-structured', token),
+  getPersonaGuidance: (token: string, structuredText: string) => ipcRenderer.invoke('chat:get-persona-guidance', token, structuredText),
   sendToLLM: (token: string, text: string) => ipcRenderer.invoke('chat:send-llm', token, text),
   getChatHistory: (token: string) => ipcRenderer.invoke('chat:history', token),
   // API Config
